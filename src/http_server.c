@@ -24,7 +24,7 @@
 LOG_MODULE_REGISTER(http_srv, LOG_LEVEL_INF);
 
 #define HTTP_LISTEN_BACKLOG  2
-#define HTTP_RECV_BUF_SIZE   512
+#define HTTP_RECV_BUF_SIZE   1024
 #define HTTP_SEND_TIMEOUT_MS  5000
 #define STREAM_SEND_TIMEOUT_S 5    /* Tolerant of WiFi latency spikes */
 #define STREAM_CLOSE_COOLDOWN_S 3  /* Wait for TCP retransmit drain after stream close */
@@ -286,7 +286,7 @@ static const char *find_header(const char *buf, const char *name)
 }
 
 /* WebSocket GUID for handshake (RFC 6455) */
-static const char ws_guid[] = "258EAFA5-E914-47DA-95CA-5AB5AC45E8B0";
+static const char ws_guid[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
 /*
  * Minimal SHA-1 — all working buffers are stack-local to keep DRAM free.

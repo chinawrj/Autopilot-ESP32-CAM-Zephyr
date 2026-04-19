@@ -80,15 +80,17 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 
 ---
 
-### M4: WebSocket Video Stream ⬜ Not Started
-> **Target**: Day 9-11
+### M4: WebSocket Video Stream ✅ Complete
+> **Completed**: Day 8
 
-- [ ] WebSocket server (Zephyr WebSocket API)
-- [ ] `/stream/ws` endpoint: real-time JPEG frames via WebSocket
-- [ ] Frontend page: WebSocket receive + Canvas rendering
-- [ ] TCP/WebSocket dual-path coexistence
+- [x] Custom WebSocket handshake (SHA-1 + Base64, RFC 6455 compliant)
+- [x] `/stream/ws` endpoint: real-time JPEG frames via WebSocket binary messages
+- [x] Frontend page (`/ws`): WebSocket receive + Canvas rendering
+- [x] TCP/WebSocket dual-path coexistence (MJPEG on :81/stream/tcp, WS on :81/stream/ws)
+- [x] Browser verified (Chromium): Canvas renders live camera frames
+- [x] Python `websockets` library verified: 3+ JPEG frames received
 
-**Completion criteria**: Both `/stream/tcp` (MJPEG) and `/stream/ws` (WebSocket) work simultaneously.
+**Completion criteria**: Both `/stream/tcp` (MJPEG) and `/stream/ws` (WebSocket) work simultaneously. ✅ Verified
 
 ---
 
@@ -117,3 +119,4 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 | 5 | 2026-04-20 | HTTP architecture rewrite, AEC/AGC tuning, M1 complete | ✅ |
 | 6 | 2026-04-20 | HUD overlay, status API, LED control, capture yield fix, M2 complete | ✅ |
 | 7 | 2026-04-20 | TCP accept bug diagnosis, two-port fix (HTTP:80/Stream:81), M3 complete | ✅ |
+| 8 | 2026-04-20 | WebSocket GUID fix, browser+Python WS streaming verified, M4 complete | ✅ |
