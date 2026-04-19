@@ -173,13 +173,16 @@ Startup code logic:
    # Edit completion status in docs/daily-logs/day-NNN.md
    # Update milestone checkboxes in docs/TARGET.md
 
-   # b. Code health check (required daily)
+   # b. Record skill/workflow feedback (if any)
+   # Append to docs/skill-feedback.md — see "Skill Feedback" section below
+
+   # c. Code health check (required daily)
    echo "=== Code Health Check ==="
    tmux_exec "espcam:build" "west build 2>&1 | grep -c 'warning:'" 60
    find src/ -name '*.c' -exec awk 'END{if(NR>250)print NR,FILENAME}' {} \;
    echo "TODOs: $(grep -rn 'TODO\|FIXME' src/ 2>/dev/null | wc -l)"
 
-   # c. Daily wrap-up commit (required)
+   # d. Daily wrap-up commit (required)
    git add -A && git commit -m "docs: day-NNN complete" && git push
    ```
    ⛔ **A commit + push is required at the end of every day. No uncommitted work allowed.**
@@ -256,3 +259,37 @@ Uses the ESP32 hardware random number generator to simulate a temperature sensor
 - Each function must not exceed 50 lines (refactoring warning at 40+)
 - All error codes must be checked (Zephyr return code convention)
 - Logging uses Zephyr `LOG_MODULE_REGISTER` / `LOG_INF/WRN/ERR` macros
+
+## Skill Feedback (Feedback Loop)
+
+During daily development, record observations about skills, workflows, or tools in **`docs/skill-feedback.md`**.
+
+### When to record
+
+- A Skill's steps are incomplete or incorrect
+- A Skill is missing critical information (error handling, edge cases)
+- A workflow step could be optimized
+- A needed Skill does not exist
+- A tool or command behaves differently than described in a Skill
+
+### Format
+
+Append to `docs/skill-feedback.md`:
+
+```markdown
+### FB-NNN (YYYY-MM-DD)
+- **Skill**: <skill-name or workflow/agent/tools>
+- **Category**: <bug | improvement | missing-feature | documentation>
+- **Summary**: <one-line summary>
+- **Detail**: <detailed description with context>
+- **Workaround**: <temporary solution, if any>
+- **Priority**: <high | medium | low>
+```
+
+### Rules
+
+- Sequential numbering (FB-001, FB-002, ...)
+- Each item must reference a specific Skill name or module
+- **Never delete** existing feedback items
+- Review at end of each day whether new feedback should be recorded
+- Feedback is committed with the daily wrap-up commit

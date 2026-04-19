@@ -1,0 +1,23 @@
+# Autopilot-ESP32-CAM-Zephyr manifest
+# T2 topology: this repo is the manifest (application) repo
+# Workspace layout:
+#   ~/espcam-zephyr/
+#   ├── .west/
+#   ├── app/  (symlink to this repo)
+#   ├── zephyr/
+#   └── modules/
+
+manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: v4.1.0
+      import:
+        # Only clone modules needed for ESP32 WiFi + networking
+        name-allowlist:
+          - hal_espressif
+          - mbedtls
