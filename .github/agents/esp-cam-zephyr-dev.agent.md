@@ -280,6 +280,48 @@ Uses the ESP32 hardware random number generator to simulate a temperature sensor
 - Each function must not exceed 50 lines (refactoring warning at 40+)
 - All error codes must be checked (Zephyr return code convention)
 - Logging uses Zephyr `LOG_MODULE_REGISTER` / `LOG_INF/WRN/ERR` macros
+- Comments use either Chinese or English (be consistent)
+- Zero compilation warnings (≥3 warnings triggers a refactoring day)
+- No more than 5 TODO/FIXME items (exceeding triggers refactoring cleanup)
+
+## Code Refactoring Strategy
+
+Refactoring is **not on a fixed schedule** but is adaptively triggered based on daily health checks. See `.github/skills/daily-iteration/SKILL.md` for details.
+
+**Trigger conditions (any one triggers refactoring):**
+- Compilation warnings ≥ 3
+- Single file ≥ 250 lines
+- Single function ≥ 40 lines
+- TODO/FIXME ≥ 5
+- Consecutive feature development ≥ 4 days
+- Duplicated code ≥ 2 instances
+- Free heap decreasing for 3 consecutive days
+
+**Refactoring day rules:**
+- 🔧 No new features; code improvements only
+- Must achieve zero warnings + functional regression verification after refactoring
+- Priority: fix warnings > split large files > eliminate duplicate code > naming conventions
+
+## Test Requirements
+
+- ✅ **All tests must pass before the end of each work day** — unit tests, browser integration tests, and serial verification
+- If any test fails, it must be fixed before the daily wrap-up commit
+- Known hardware-dependent test failures (e.g., SD card not inserted) are only acceptable when the user has explicitly stated that hardware is not ready
+
+## Hardware Assumptions
+
+- **Always assume all hardware is functional** (board, camera, SD card, WiFi, serial) unless the user explicitly states otherwise
+- Do not preemptively mark hardware as unavailable or skip hardware-dependent tests
+- If a hardware test fails, investigate and attempt to fix it rather than assuming hardware is missing
+
+## Things to Avoid
+
+- ❌ Do not hardcode WiFi passwords in source code
+- ❌ Do not skip testing to rush to the next milestone
+- ❌ Do not commit large amounts of untested code at once
+- ❌ Do not ignore compilation warnings
+- ❌ Do not perform complex operations inside interrupt handlers
+- ❌ Do not assume hardware is unavailable without user confirmation
 
 ## Skill Feedback (Feedback Loop)
 
