@@ -1,0 +1,35 @@
+# Build artifacts
+build/
+twister-out/
+
+# Zephyr config
+*.config
+*.old
+
+# WiFi credentials — NEVER commit
+*.credentials
+**/wifi_config.h
+wifi-credentials.conf
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# West workspace (if using T2 topology)
+.west/
+
+# Keep defaults
+!prj.conf
+!boards/
