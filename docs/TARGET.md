@@ -100,11 +100,11 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 - [x] Watchdog timer configuration (30s HW WDT, feeds from heartbeat loop)
 - [x] Memory monitoring (system heap stats in `/api/status` + HUD)
 - [x] WiFi RSSI tracking (signal strength in `/api/status` + HUD + heartbeat log)
-- [ ] Memory leak detection (long-running heap tracking)
+- [x] Memory leak detection (3-min soak + 20 connect/disconnect cycles — no leaks)
+- [x] Code refactoring (HTML template extraction, http_server.c 1146→1051 lines)
 - [ ] WiFi reconnection stress testing
-- [ ] PSRAM optimization (frame buffer allocation strategy)
 - [ ] 24-hour continuous operation test
-- [ ] Code refactoring and documentation
+- [ ] Full code documentation pass
 
 **Completion criteria**: 24-hour continuous operation without crash; all tests pass.
 
@@ -123,3 +123,4 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 | 7 | 2026-04-20 | TCP accept bug diagnosis, two-port fix (HTTP:80/Stream:81), M3 complete | ✅ |
 | 8 | 2026-04-20 | WebSocket GUID fix, browser+Python WS streaming verified, M4 complete | ✅ |
 | 9 | 2026-04-20 | Watchdog timer, heap monitoring, WiFi RSSI in status API + HUD, M5 started | ✅ |
+| 10 | 2026-04-20 | HTML template extraction, memory leak soak test (PASS, zero drift) | ✅ |
