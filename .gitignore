@@ -38,3 +38,5 @@ __pycache__/
 # Keep defaults
 !prj.conf
 !boards/
+esp32cam-day3-stream.png
+.playwright-mcp/
