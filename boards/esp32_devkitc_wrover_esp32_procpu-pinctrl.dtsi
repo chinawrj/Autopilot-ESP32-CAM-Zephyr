@@ -1,0 +1,30 @@
+/*
+ * Pinctrl overlay for YD-ESP32-CAM (VCC-GND Studio)
+ *
+ * I2C0:  SDA=GPIO26, SCL=GPIO27  (OV2640 SCCB)
+ * LEDC:  CH0=GPIO0               (OV2640 XCLK)
+ */
+
+#include <zephyr/dt-bindings/pinctrl/esp-pinctrl-common.h>
+#include <dt-bindings/pinctrl/esp32-pinctrl.h>
+#include <zephyr/dt-bindings/pinctrl/esp32-gpio-sigmap.h>
+
+&pinctrl {
+
+	i2c0_default: i2c0_default {
+		group1 {
+			pinmux = <I2C0_SDA_GPIO26>,
+				 <I2C0_SCL_GPIO27>;
+			bias-pull-up;
+			drive-open-drain;
+			output-high;
+		};
+	};
+
+	ledc0_default: ledc0_default {
+		group1 {
+			pinmux = <LEDC_CH0_GPIO0>;
+			output-enable;
+		};
+	};
+};

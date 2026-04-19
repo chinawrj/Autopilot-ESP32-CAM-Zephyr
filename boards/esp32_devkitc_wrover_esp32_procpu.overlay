@@ -3,8 +3,15 @@
  * Base board: esp32_devkitc_wrover
  * Module: ESP32-WROVER-E-N8R8 (8MB Flash, 8MB PSRAM)
  *
- * Adds: onboard LED on GPIO33, enables WiFi
+ * Peripherals:
+ *   - Onboard LED on GPIO33
+ *   - WiFi
+ *   - I2C0 for OV2640 SCCB (SDA=GPIO26, SCL=GPIO27)
+ *   - LEDC PWM for OV2640 XCLK (GPIO0, 20MHz)
+ *   - Camera PWDN on GPIO32
  */
+
+#include "esp32_devkitc_wrover_esp32_procpu-pinctrl.dtsi"
 
 / {
 	leds {
@@ -22,4 +29,25 @@
 
 &wifi {
 	status = "okay";
+};
+
+/* I2C0 for OV2640 SCCB (SDA=GPIO26, SCL=GPIO27) */
+&i2c0 {
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-names = "default";
+};
+
+/* LEDC for OV2640 XCLK generation on GPIO0 */
+&ledc0 {
+	status = "okay";
+	pinctrl-0 = <&ledc0_default>;
+	pinctrl-names = "default";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	channel0@0 {
+		reg = <0x0>;
+		timer = <0>;
+	};
 };

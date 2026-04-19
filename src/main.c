@@ -14,6 +14,7 @@
 #include "wifi_manager.h"
 #include "frame_source.h"
 #include "http_server.h"
+#include "camera_init.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
@@ -75,7 +76,15 @@ int main(void)
 		LOG_WRN("WiFi init returned %d, running in degraded mode", ret);
 	}
 
-	/* Initialize frame source (test pattern for now) */
+	/* Initialize OV2640 camera (XCLK, PWDN, SCCB probe) */
+	ret = camera_init();
+	if (ret < 0) {
+		LOG_WRN("Camera init failed: %d — streaming test pattern", ret);
+	} else {
+		LOG_INF("Camera detected: OV2640");
+	}
+
+	/* Initialize frame source (test pattern for now, camera later) */
 	ret = frame_source_init();
 	if (ret < 0) {
 		LOG_ERR("Frame source init failed: %d", ret);
