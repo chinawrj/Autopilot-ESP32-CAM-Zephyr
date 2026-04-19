@@ -15,6 +15,7 @@
 #include "frame_source.h"
 #include "http_server.h"
 #include "camera_init.h"
+#include "cam_i2s_capture.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
@@ -76,15 +77,21 @@ int main(void)
 		LOG_WRN("WiFi init returned %d, running in degraded mode", ret);
 	}
 
-	/* Initialize OV2640 camera (XCLK, PWDN, SCCB probe) */
+	/* Initialize OV2640 camera (XCLK, PWDN, SCCB probe, JPEG config) */
 	ret = camera_init();
 	if (ret < 0) {
 		LOG_WRN("Camera init failed: %d — streaming test pattern", ret);
 	} else {
-		LOG_INF("Camera detected: OV2640");
+		LOG_INF("Camera detected: OV2640 (JPEG QVGA)");
+
+		/* Initialize I2S capture driver */
+		ret = cam_i2s_init();
+		if (ret < 0) {
+			LOG_WRN("I2S capture init failed: %d", ret);
+		}
 	}
 
-	/* Initialize frame source (test pattern for now, camera later) */
+	/* Initialize frame source (uses camera if available, else test pattern) */
 	ret = frame_source_init();
 	if (ret < 0) {
 		LOG_ERR("Frame source init failed: %d", ret);

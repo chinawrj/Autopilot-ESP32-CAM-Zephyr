@@ -22,7 +22,7 @@ LOG_MODULE_REGISTER(http_srv, LOG_LEVEL_INF);
 #define HTTP_LISTEN_BACKLOG  2
 #define HTTP_RECV_BUF_SIZE   512
 #define HTTP_SEND_TIMEOUT_MS 5000
-#define MJPEG_FRAME_DELAY_MS 200   /* ~5 FPS for test pattern */
+#define MJPEG_FRAME_DELAY_MS 50    /* Minimal delay; capture itself takes time */
 #define MJPEG_BOUNDARY       "frame"
 
 #define HTTP_THREAD_STACK_SIZE 4096

@@ -9,4 +9,5 @@ target_sources(app PRIVATE
     src/frame_source.c
     src/http_server.c
     src/camera_init.c
+    src/cam_i2s_capture.c
 )
