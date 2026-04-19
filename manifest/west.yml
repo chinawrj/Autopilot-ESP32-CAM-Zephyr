@@ -20,4 +20,5 @@ manifest:
         # Only clone modules needed for ESP32 WiFi + networking
         name-allowlist:
           - hal_espressif
+          - hal_xtensa
           - mbedtls
