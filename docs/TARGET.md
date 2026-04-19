@@ -50,26 +50,19 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 
 ---
 
-### M2: HUD Overlay ⬜ Not Started
-> **Target**: Day 6-7
+### M2: HUD Overlay + LED Control ✅ Complete
+> **Completed**: Day 6
 
-- [ ] Real-time FPS calculation (server-side frame rate tracking)
-- [ ] Virtual temperature sensor (ESP32 hardware RNG, baseline 25°C ±3°C)
-- [ ] REST API: GET `/api/status` → JSON {fps, temperature, led_state}
-- [ ] Frontend HUD: JavaScript polling + overlay on video stream
+- [x] Real-time FPS calculation (server-side frame rate tracking, fps×10 integer)
+- [x] Virtual temperature sensor (ESP32 hardware RNG, baseline 25°C ±3°C)
+- [x] REST API: GET `/api/status` → JSON {fps, uptime, temp, led, led_mode, stream, frames}
+- [x] REST API: GET `/api/led/{on,off,toggle,auto}` → JSON {led, mode}
+- [x] LED control module (src/led_control.c) with auto/manual modes
+- [x] Frontend HUD: JavaScript polling /api/status every 2s + overlay on video
+- [x] LED control buttons on index page
+- [x] Camera capture yield fix (k_busy_wait→k_yield for network coexistence)
 
-**Completion criteria**: `/api/status` returns valid JSON with fps, temperature, led_state.
-
----
-
-### M3: LED Control ⬜ Not Started
-> **Target**: Day 8
-
-- [ ] GPIO33 LED driver (Zephyr GPIO API)
-- [ ] REST API: POST `/api/led` {state: on/off/toggle}
-- [ ] Frontend button with real-time state feedback
-
-**Completion criteria**: LED toggles via API and browser button.
+**Completion criteria**: `/api/status` returns valid JSON; LED toggles via API. ✅ Verified
 
 ---
 
@@ -108,3 +101,4 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 | 3 | 2026-04-19 | HTTP server + MJPEG test stream, browser verified | ✅ |
 | 4 | 2026-04-19 | OV2640 camera bring-up, I2S DMA capture, JPEG header reconstruction | ✅ |
 | 5 | 2026-04-20 | HTTP architecture rewrite, AEC/AGC tuning, M1 complete | ✅ |
+| 6 | 2026-04-20 | HUD overlay, status API, LED control, capture yield fix, M2 complete | ✅ |
