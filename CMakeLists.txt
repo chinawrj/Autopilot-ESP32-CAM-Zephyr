@@ -10,4 +10,5 @@ target_sources(app PRIVATE
     src/http_server.c
     src/camera_init.c
     src/cam_i2s_capture.c
+    src/led_control.c
 )

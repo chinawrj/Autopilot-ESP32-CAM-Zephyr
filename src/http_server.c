@@ -9,6 +9,7 @@
 
 #include "http_server.h"
 #include "frame_source.h"
+#include "led_control.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -17,6 +18,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/net/socket.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/random/random.h>
 
 LOG_MODULE_REGISTER(http_srv, LOG_LEVEL_INF);
 
@@ -37,6 +39,10 @@ static int server_port;
 static struct k_sem stream_sem;
 static volatile int stream_client_fd = -1;
 
+/* Telemetry: updated by stream thread, read by API */
+static volatile uint32_t stream_fps10;     /* FPS × 10 */
+static volatile uint32_t stream_frame_cnt; /* total frames this session */
+
 static const char http_503[] =
 	"HTTP/1.1 503 Service Unavailable\r\n"
 	"Content-Type: text/plain\r\n"
@@ -53,17 +59,40 @@ static const char index_html[] =
 	"<title>ESP32-CAM</title>"
 	"<style>"
 	"body{font-family:sans-serif;text-align:center;background:#1a1a2e;color:#eee;margin:0;padding:20px}"
-	"h1{color:#0ff}img{max-width:100%;border:2px solid #0ff;border-radius:8px}"
-	"a{color:#0ff;text-decoration:none;font-size:1.2em}"
-	".status{background:#16213e;padding:10px;border-radius:8px;margin:10px auto;max-width:400px}"
+	"h1{color:#0ff;margin:10px 0}img{max-width:100%;border:2px solid #0ff;border-radius:8px}"
+	".hud{background:#16213e;padding:10px;border-radius:8px;margin:10px auto;max-width:420px;"
+	"display:flex;flex-wrap:wrap;justify-content:center;gap:8px;font-size:0.9em}"
+	".hud span{background:#0d1b2a;padding:4px 10px;border-radius:4px}"
+	".btn{background:#0ff;color:#1a1a2e;border:none;padding:8px 20px;border-radius:6px;"
+	"font-size:1em;cursor:pointer;margin:8px}.btn:hover{background:#0aa}"
 	"</style></head><body>"
 	"<h1>&#x1F4F7; ESP32-CAM</h1>"
-	"<div class=\"status\">Zephyr RTOS | YD-ESP32-CAM</div>"
-	"<h2>Live Stream</h2>"
+	"<div class=\"hud\" id=\"hud\">"
+	"<span id=\"fps\">FPS: --</span>"
+	"<span id=\"temp\">Temp: --</span>"
+	"<span id=\"up\">Up: --</span>"
+	"<span id=\"led\">LED: --</span>"
+	"</div>"
 	"<img src=\"/stream/tcp\" alt=\"MJPEG Stream\">"
-	"<br><br>"
-	"<a href=\"/stream/tcp\">Direct Stream Link</a>"
-	"</body></html>";
+	"<br>"
+	"<button class=\"btn\" onclick=\"ledCtrl('on')\">LED ON</button>"
+	"<button class=\"btn\" onclick=\"ledCtrl('off')\">LED OFF</button>"
+	"<button class=\"btn\" onclick=\"ledCtrl('toggle')\">Toggle</button>"
+	"<script>"
+	"function upd(){"
+	"fetch('/api/status').then(r=>r.json()).then(d=>{"
+	"document.getElementById('fps').textContent='FPS: '+(d.fps/10);"
+	"document.getElementById('temp').textContent='Temp: '+(d.temp/10)+'\\u00b0C';"
+	"var s=d.uptime,m=Math.floor(s/60),h=Math.floor(m/60);"
+	"document.getElementById('up').textContent='Up: '+h+'h'+m%60+'m';"
+	"document.getElementById('led').textContent='LED: '+d.led;"
+	"}).catch(()=>{})};"
+	"function ledCtrl(a){"
+	"fetch('/api/led/'+a).then(r=>r.json()).then(d=>{"
+	"document.getElementById('led').textContent='LED: '+d.led;"
+	"}).catch(()=>{})};"
+	"setInterval(upd,2000);upd();"
+	"</script></body></html>";
 
 static const char http_200_html_hdr[] =
 	"HTTP/1.1 200 OK\r\n"
@@ -86,6 +115,13 @@ static const char http_404[] =
 	"Content-Length: 9\r\n"
 	"\r\n"
 	"Not Found";
+
+static const char http_200_json_hdr[] =
+	"HTTP/1.1 200 OK\r\n"
+	"Content-Type: application/json\r\n"
+	"Access-Control-Allow-Origin: *\r\n"
+	"Connection: close\r\n"
+	"Content-Length: ";
 
 /* Send all bytes, handling partial writes */
 static int sendall(int sock, const void *buf, size_t len)
@@ -130,6 +166,69 @@ static int parse_request(const char *buf, char *method, size_t method_len,
 	path[i] = '\0';
 
 	return 0;
+}
+
+static int handle_api_status(int client, char *buf, size_t buf_size)
+{
+	uint32_t uptime_s = (uint32_t)(k_uptime_get() / 1000);
+	/* Simulated temperature: 25.0 ± 3.0°C (integer tenths) */
+	uint32_t rng = sys_rand32_get();
+	int temp10 = 250 + (int)(rng % 61) - 30; /* 220..280 → 22.0..28.0 */
+	bool active = (stream_client_fd >= 0);
+	const char *led_str = led_control_get_state() ? "on" : "off";
+	const char *led_mode = led_control_is_manual() ? "manual" : "auto";
+
+	int json_len = snprintf(buf, buf_size,
+		"{\"fps\":%u,\"uptime\":%u,\"temp\":%d,"
+		"\"led\":\"%s\",\"led_mode\":\"%s\","
+		"\"stream\":%s,\"frames\":%u}",
+		stream_fps10, uptime_s, temp10,
+		led_str, led_mode,
+		active ? "true" : "false",
+		stream_frame_cnt);
+
+	/* Build HTTP header in a small temp area after the JSON */
+	char hdr[128];
+	int hdr_len = snprintf(hdr, sizeof(hdr), "%s%d\r\n\r\n",
+			       http_200_json_hdr, json_len);
+	int ret = sendall(client, hdr, hdr_len);
+
+	if (ret) {
+		return ret;
+	}
+	return sendall(client, buf, json_len);
+}
+
+static int handle_api_led(int client, const char *action, char *buf,
+			  size_t buf_size)
+{
+	if (strcmp(action, "on") == 0) {
+		led_control_set(true);
+	} else if (strcmp(action, "off") == 0) {
+		led_control_set(false);
+	} else if (strcmp(action, "toggle") == 0) {
+		led_control_toggle();
+	} else if (strcmp(action, "auto") == 0) {
+		led_control_auto();
+	} else {
+		sendall(client, http_404, sizeof(http_404) - 1);
+		return 0;
+	}
+
+	const char *state = led_control_get_state() ? "on" : "off";
+	const char *mode = led_control_is_manual() ? "manual" : "auto";
+	int json_len = snprintf(buf, buf_size,
+		"{\"led\":\"%s\",\"mode\":\"%s\"}", state, mode);
+
+	char hdr[128];
+	int hdr_len = snprintf(hdr, sizeof(hdr), "%s%d\r\n\r\n",
+			       http_200_json_hdr, json_len);
+	int ret = sendall(client, hdr, hdr_len);
+
+	if (ret) {
+		return ret;
+	}
+	return sendall(client, buf, json_len);
 }
 
 static int handle_index(int client)
@@ -209,11 +308,15 @@ static int handle_mjpeg_stream(int client)
 		int64_t send_ms = k_uptime_get() - send_start;
 
 		frame_count++;
+		int64_t elapsed = k_uptime_get() - stream_start;
+		int fps10 = elapsed > 0
+			? (int)(frame_count * 10000 / elapsed) : 0;
+
+		/* Update global telemetry for /api/status */
+		stream_fps10 = fps10;
+		stream_frame_cnt = frame_count;
+
 		if (frame_count <= 3 || (frame_count % 20) == 0) {
-			int64_t elapsed = k_uptime_get() - stream_start;
-			int fps10 = elapsed > 0
-				? (int)(frame_count * 10000 / elapsed)
-				: 0;
 			LOG_INF("Frame %u: %zu B, cap=%lld ms, "
 				"send=%lld ms, avg %d.%d fps",
 				frame_count, frame_size,
@@ -309,6 +412,12 @@ static void handle_client(int client, struct sockaddr_in *addr)
 			k_sem_give(&stream_sem);
 			/* Socket will be closed by stream thread */
 		}
+	} else if (strcmp(path, "/api/status") == 0) {
+		handle_api_status(client, recv_buf, sizeof(recv_buf));
+		zsock_close(client);
+	} else if (strncmp(path, "/api/led/", 9) == 0) {
+		handle_api_led(client, path + 9, recv_buf, sizeof(recv_buf));
+		zsock_close(client);
 	} else {
 		sendall(client, http_404, sizeof(http_404) - 1);
 		zsock_close(client);

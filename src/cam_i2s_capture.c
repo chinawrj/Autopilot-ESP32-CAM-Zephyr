@@ -595,9 +595,10 @@ int cam_i2s_capture_frame(const uint8_t **buf, size_t *size)
 
 	/* Phase 1: Wait for blanking period after warmup.
 	 * Rising-edge VSYNC ISR sets vsync_blanking = true.
-	 * ISR handles DMA recycling during warmup. */
+	 * ISR handles DMA recycling during warmup.
+	 * Use k_yield to allow network stack to run between polls. */
 	while (!vsync_blanking && k_uptime_get() < deadline) {
-		k_busy_wait(10);
+		k_yield();
 	}
 
 	if (!vsync_blanking) {
@@ -611,9 +612,10 @@ int cam_i2s_capture_frame(const uint8_t **buf, size_t *size)
 	cam_i2s_dma_start();
 	extract_active = true;
 
-	/* Wait for frame_done (next rising VSYNC edge). */
+	/* Wait for frame_done (next rising VSYNC edge).
+	 * Use k_yield to allow network stack to run between polls. */
 	while (!frame_done && k_uptime_get() < deadline) {
-		k_busy_wait(100);
+		k_yield();
 	}
 
 	/* Phase 4: Let ISR drain remaining descriptors after frame_done.
