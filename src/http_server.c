@@ -401,21 +401,25 @@ static int handle_api_status(int client, char *buf, size_t buf_size)
 	/* WiFi link info */
 	int rssi = 0;
 	unsigned int channel = 0;
+	uint32_t wifi_dc = 0, wifi_rc = 0;
 
 	wifi_manager_get_link_info(&rssi, &channel);
+	wifi_manager_get_stats(&wifi_dc, &wifi_rc);
 
 	int json_len = snprintf(buf, buf_size,
 		"{\"fps\":%u,\"uptime\":%u,\"temp\":%d,"
 		"\"led\":\"%s\",\"led_mode\":\"%s\","
 		"\"stream\":%s,\"frames\":%u,"
 		"\"heap_free\":%u,\"heap_used\":%u,"
-		"\"rssi\":%d,\"channel\":%u}",
+		"\"rssi\":%d,\"channel\":%u,"
+		"\"wifi_disconnects\":%u,\"wifi_reconnects\":%u}",
 		stream_fps10, uptime_s, temp10,
 		led_str, led_mode,
 		active ? "true" : "false",
 		stream_frame_cnt,
 		heap_free, heap_used,
-		rssi, channel);
+		rssi, channel,
+		wifi_dc, wifi_rc);
 
 	/* Build HTTP header in a small temp area after the JSON */
 	char hdr[128];

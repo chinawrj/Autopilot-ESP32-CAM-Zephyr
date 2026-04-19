@@ -23,6 +23,8 @@ static struct net_mgmt_event_callback ipv4_cb;
 static K_SEM_DEFINE(wifi_connected_sem, 0, 1);
 static bool connected;
 static char ip_addr_str[NET_IPV4_ADDR_LEN] = "0.0.0.0";
+static uint32_t disconnect_count;
+static uint32_t reconnect_count;
 
 #define WIFI_MGMT_EVENTS (NET_EVENT_WIFI_CONNECT_RESULT | \
 			  NET_EVENT_WIFI_DISCONNECT_RESULT)
@@ -45,6 +47,7 @@ static void wifi_event_handler(struct net_mgmt_event_callback *cb,
 			(const struct wifi_status *)cb->info;
 
 		LOG_WRN("WiFi disconnected: reason=%d", status->status);
+		disconnect_count++;
 		connected = false;
 	}
 }
@@ -68,6 +71,12 @@ static void ipv4_event_handler(struct net_mgmt_event_callback *cb,
 			ip_addr_str, sizeof(ip_addr_str));
 
 		LOG_INF("DHCP IP assigned: %s", ip_addr_str);
+		if (connected) {
+			/* IP changed while already connected (rare) */
+		} else if (disconnect_count > 0) {
+			reconnect_count++;
+			LOG_INF("WiFi reconnected (#%u)", reconnect_count);
+		}
 		connected = true;
 		k_sem_give(&wifi_connected_sem);
 		return;
@@ -194,4 +203,14 @@ int wifi_manager_get_link_info(int *rssi, unsigned int *channel)
 	}
 
 	return 0;
+}
+
+void wifi_manager_get_stats(uint32_t *disconnects, uint32_t *reconnects)
+{
+	if (disconnects) {
+		*disconnects = disconnect_count;
+	}
+	if (reconnects) {
+		*reconnects = reconnect_count;
+	}
 }

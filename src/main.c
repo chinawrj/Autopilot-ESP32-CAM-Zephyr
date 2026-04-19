@@ -73,15 +73,17 @@ int main(void)
 		LOG_ERR("Frame source init failed: %d", ret);
 	}
 
-	/* Start HTTP server */
-	if (wifi_manager_is_connected()) {
-		ret = http_server_start(HTTP_PORT);
-		if (ret < 0) {
-			LOG_ERR("HTTP server start failed: %d", ret);
-		} else {
-			LOG_INF("HTTP server started on http://%s:%d/ (stream port %d)",
-				wifi_manager_get_ip(), HTTP_PORT, HTTP_PORT + 1);
-		}
+	/* Start HTTP server (binds to INADDR_ANY — works before WiFi is up,
+	 * clients can connect once WiFi assigns an IP) */
+	ret = http_server_start(HTTP_PORT);
+	if (ret < 0) {
+		LOG_ERR("HTTP server start failed: %d", ret);
+	} else if (wifi_manager_is_connected()) {
+		LOG_INF("HTTP server started on http://%s:%d/ (stream port %d)",
+			wifi_manager_get_ip(), HTTP_PORT, HTTP_PORT + 1);
+	} else {
+		LOG_INF("HTTP server started on port %d (waiting for WiFi)",
+			HTTP_PORT);
 	}
 
 	/* Start hardware watchdog AFTER all init completes */
@@ -125,12 +127,14 @@ int main(void)
 		if (++loop_cnt % 6 == 0) {
 			int rssi = 0;
 			unsigned int channel = 0;
+			uint32_t disconnects = 0, reconnects = 0;
 
 			wifi_manager_get_link_info(&rssi, &channel);
-			LOG_INF("Heartbeat: uptime=%us WiFi=%s rssi=%d ch=%u",
+			wifi_manager_get_stats(&disconnects, &reconnects);
+			LOG_INF("Heartbeat: uptime=%us WiFi=%s rssi=%d ch=%u dc=%u rc=%u",
 				(uint32_t)(k_uptime_get() / 1000),
 				wifi_manager_is_connected() ? "up" : "DOWN",
-				rssi, channel);
+				rssi, channel, disconnects, reconnects);
 		}
 
 		k_msleep(wifi_manager_is_connected() ? 5000 : 1000);

@@ -42,4 +42,12 @@ const char *wifi_manager_get_ip(void);
  */
 int wifi_manager_get_link_info(int *rssi, unsigned int *channel);
 
+/**
+ * Get WiFi disconnect/reconnect statistics.
+ *
+ * @param disconnects Output: total disconnect events since boot
+ * @param reconnects Output: successful reconnections after disconnect
+ */
+void wifi_manager_get_stats(uint32_t *disconnects, uint32_t *reconnects);
+
 #endif /* WIFI_MANAGER_H */
