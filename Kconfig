@@ -1,0 +1,29 @@
+# Application-specific Kconfig symbols
+
+menu "ESP-CAM Application"
+
+config APP_WIFI_SSID
+	string "WiFi SSID"
+	default ""
+	help
+	  WiFi network SSID to connect to.
+	  Inject at build time via overlay conf or -DCONFIG_APP_WIFI_SSID="..."
+	  Do NOT hardcode real credentials in prj.conf.
+
+config APP_WIFI_PASSWORD
+	string "WiFi Password"
+	default ""
+	help
+	  WiFi network password.
+	  Inject at build time via overlay conf or provision script.
+	  Do NOT hardcode real credentials in prj.conf.
+
+config APP_WIFI_CONNECT_TIMEOUT_S
+	int "WiFi connection timeout in seconds"
+	default 30
+	help
+	  Maximum time to wait for WiFi connection before retrying.
+
+endmenu
+
+source "Kconfig.zephyr"

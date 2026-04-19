@@ -1,12 +1,17 @@
 /*
  * Autopilot ESP32-CAM — Main Application
  *
- * Day 1: LED blink on GPIO33 to verify build + flash pipeline.
+ * LED status indicator:
+ *   Slow blink (1s)  = WiFi connecting
+ *   Solid on         = WiFi connected
+ *   Fast blink (200ms) = Error
  */
 
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
+
+#include "wifi_manager.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
@@ -18,7 +23,25 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 
-#define BLINK_PERIOD_MS 1000
+static int led_init(void)
+{
+	if (!gpio_is_ready_dt(&led)) {
+		LOG_ERR("GPIO device not ready");
+		return -ENODEV;
+	}
+
+	int ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE);
+
+	if (ret < 0) {
+		LOG_ERR("Failed to configure LED GPIO: %d", ret);
+	}
+	return ret;
+}
+
+static void led_set(bool on)
+{
+	gpio_pin_set_dt(&led, on ? 1 : 0);
+}
 
 int main(void)
 {
@@ -27,22 +50,40 @@ int main(void)
 	LOG_INF("Autopilot ESP32-CAM starting...");
 	LOG_INF("Board: YD-ESP32-CAM (ESP32-WROVER-E-N8R8)");
 
-	if (!gpio_is_ready_dt(&led)) {
-		LOG_ERR("GPIO device not ready");
-		return -ENODEV;
-	}
-
-	ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
+	ret = led_init();
 	if (ret < 0) {
-		LOG_ERR("Failed to configure LED GPIO: %d", ret);
 		return ret;
 	}
 
-	LOG_INF("LED blink started (GPIO33, period=%dms)", BLINK_PERIOD_MS);
+	/* Slow blink while connecting */
+	LOG_INF("Connecting to WiFi...");
+	for (int i = 0; i < 3; i++) {
+		led_set(true);
+		k_msleep(500);
+		led_set(false);
+		k_msleep(500);
+	}
 
+	ret = wifi_manager_init();
+	if (ret == 0) {
+		LOG_INF("WiFi ready — IP: %s", wifi_manager_get_ip());
+		led_set(true);  /* Solid on = connected */
+	} else {
+		LOG_WRN("WiFi init returned %d, running in degraded mode", ret);
+	}
+
+	/* Main loop: heartbeat + status monitoring */
 	while (1) {
-		gpio_pin_toggle_dt(&led);
-		k_msleep(BLINK_PERIOD_MS);
+		if (wifi_manager_is_connected()) {
+			led_set(true);
+			k_msleep(5000);
+		} else {
+			/* Slow blink = not connected */
+			led_set(true);
+			k_msleep(500);
+			led_set(false);
+			k_msleep(500);
+		}
 	}
 
 	return 0;

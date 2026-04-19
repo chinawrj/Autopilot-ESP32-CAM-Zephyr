@@ -3,7 +3,7 @@
  * Base board: esp32_devkitc_wrover
  * Module: ESP32-WROVER-E-N8R8 (8MB Flash, 8MB PSRAM)
  *
- * Adds: onboard LED on GPIO33
+ * Adds: onboard LED on GPIO33, enables WiFi
  */
 
 / {
@@ -18,4 +18,8 @@
 	aliases {
 		led0 = &led0;
 	};
+};
+
+&wifi {
+	status = "okay";
 };

@@ -17,18 +17,18 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 
 ## Milestone Progress
 
-### M0: Project Scaffold & Zephyr Environment 🟡 In Progress
-> **Target**: Day 1-2
+### M0: Project Scaffold & Zephyr Environment ✅ Complete
+> **Completed**: Day 2
 
 - [x] Zephyr workspace setup (`west init`, `west update`) — T2 topology, Zephyr v4.1.0
 - [x] ESP32 board support verified (`west build -b esp32_devkitc_wrover/esp32/procpu`)
 - [x] Board overlay for LED on GPIO33 (DTS overlay with led0 alias)
-- [ ] prj.conf with WiFi, networking, HTTP server basics
-- [ ] WiFi management module (connect, auto-reconnect, secure credential reading)
-- [ ] Build passed + flash succeeded + serial shows WiFi connection log + got IP
+- [x] prj.conf with WiFi, networking, DHCP config
+- [x] WiFi management module (connect, auto-reconnect, secure credential reading)
+- [x] Build passed + flash succeeded + serial shows WiFi connection log + got IP (192.168.1.168)
 - [x] Git: initial commit
 
-**Completion criteria**: Serial output shows `WiFi connected` with assigned IP address.
+**Completion criteria**: Serial output shows `WiFi connected` with assigned IP address. ✅ Verified
 
 ---
 
@@ -100,3 +100,4 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 | Day | Date | Summary | Status |
 |-----|------|---------|--------|
 | 1 | 2025-04-19 | Project scaffold, Zephyr workspace, LED blink build passing | ✅ |
+| 2 | 2026-04-19 | WiFi module, on-device verified (IP: 192.168.1.168), M0 complete | ✅ |
