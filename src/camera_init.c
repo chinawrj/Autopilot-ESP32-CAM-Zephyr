@@ -217,6 +217,64 @@ static int camera_configure_jpeg_qvga(void)
 	ret = ov2640_write_reg(i2c, QS, 0x04);
 	if (ret < 0) { return ret; }
 
+	/*
+	 * Re-enable AEC/AGC and raise gain ceiling.
+	 * JPEG register writes may reset sensor-bank settings.
+	 * COM9 bits[6:4]: AGC gain ceiling (010=8x, 100=32x, 110=128x)
+	 */
+	ret = ov2640_write_reg(i2c, BANK_SEL, BANK_SEL_SENSOR);
+	if (ret < 0) { return ret; }
+	ret = ov2640_write_reg(i2c, COM8,
+		COM8_DEFAULT | COM8_BNDF_EN | COM8_AGC_EN | COM8_AEC_EN);
+	if (ret < 0) { return ret; }
+	/* AGC ceiling 32x (bits[6:4] = 100) for better low-light */
+	ret = ov2640_write_reg(i2c, COM9, 0x08 | (0x04 << 4));
+	if (ret < 0) { return ret; }
+	LOG_INF("AEC/AGC enabled, gain ceiling 32x");
+
+	/*
+	 * DSP brightness boost — compensates for dark sensor output.
+	 * SDE (Special Digital Effects) must be enabled (CTRL2 bit 3).
+	 * Register 0x9B controls brightness offset (0=neutral, 0x20=+2).
+	 */
+	ret = ov2640_write_reg(i2c, BANK_SEL, BANK_SEL_DSP);
+	if (ret < 0) { return ret; }
+	/* Set brightness +2 (0x20) with sign bit 0x08 = positive */
+	ret = ov2640_write_reg(i2c, 0x9B, 0x20);
+	if (ret < 0) { return ret; }
+	/* Set contrast slightly above default */
+	ret = ov2640_write_reg(i2c, 0x9C, 0x28);
+	if (ret < 0) { return ret; }
+	LOG_INF("DSP brightness/contrast boost applied");
+
+	/* Read back AEC/AGC state for diagnostics */
+	{
+		uint8_t val;
+
+		ov2640_write_reg(i2c, BANK_SEL, BANK_SEL_SENSOR);
+		if (ov2640_read_reg(i2c, COM8, &val) == 0) {
+			LOG_INF("COM8=0x%02x (AEC=%s AGC=%s)",
+				val,
+				(val & COM8_AEC_EN) ? "on" : "off",
+				(val & COM8_AGC_EN) ? "on" : "off");
+		}
+		if (ov2640_read_reg(i2c, COM9, &val) == 0) {
+			LOG_INF("COM9=0x%02x (gain_ceil=%dx)",
+				val, 2 << ((val >> 4) & 0x07));
+		}
+		if (ov2640_read_reg(i2c, 0x00, &val) == 0) {
+			LOG_INF("GAIN=0x%02x", val);
+		}
+		/* Read exposure: AEC[9:2]=reg 0x10, AECH[15:10]=reg 0x45 */
+		uint8_t aec_lo = 0, aec_hi = 0;
+
+		ov2640_read_reg(i2c, 0x10, &aec_lo);
+		ov2640_read_reg(i2c, 0x45, &aec_hi);
+		LOG_INF("AEC=0x%02x AECH=0x%02x (exposure=%u)",
+			aec_lo, aec_hi,
+			((uint16_t)aec_hi << 8) | aec_lo);
+	}
+
 	/* Verify JPEG mode by reading back IMAGE_MODE register */
 	{
 		uint8_t img_mode = 0;

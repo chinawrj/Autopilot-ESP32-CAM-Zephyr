@@ -32,19 +32,21 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 
 ---
 
-### M1: Basic TCP Video Stream 🔄 In Progress
-> **Target**: Day 3-5
+### M1: Basic TCP Video Stream ✅ Complete
+> **Completed**: Day 5
 
-- [ ] Camera driver integration (Zephyr video subsystem or ESP32 camera HAL)
-- [ ] OV2640 initialization with PSRAM frame buffer
-- [x] HTTP server (custom socket-based, BSD sockets API)
+- [x] Camera driver integration (custom I2S DMA driver, not Zephyr video subsystem)
+- [x] OV2640 initialization with PSRAM frame buffer (64KB in PSRAM)
+- [x] HTTP server (custom socket-based, BSD sockets API, listener + stream worker threads)
 - [x] GET `/` → homepage (styled HTML with MJPEG embed)
 - [x] GET `/stream/tcp` → MJPEG stream (multipart/x-mixed-replace)
-- [x] Browser verified: MJPEG stream working (test pattern)
+- [x] Browser verified: MJPEG stream working (real camera frames)
 - [x] Frame source abstraction (pluggable camera backend)
+- [x] JPEG header reconstruction (pre-capture DQT/DHT/SOF0/SOS extraction)
+- [x] Concurrent page serving while streaming (503 for busy stream)
+- [x] Timing instrumentation (capture_ms, send_ms, FPS)
 
-**Completion criteria**: Browser displays live MJPEG stream from `http://<DEVICE_IP>/stream/tcp`.
-> Partial: streaming infrastructure complete with test pattern; camera driver still needed.
+**Completion criteria**: Browser displays live MJPEG stream from `http://<DEVICE_IP>/stream/tcp`. ✅ Verified
 
 ---
 
@@ -104,3 +106,5 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 | 1 | 2025-04-19 | Project scaffold, Zephyr workspace, LED blink build passing | ✅ |
 | 2 | 2026-04-19 | WiFi module, on-device verified (IP: 192.168.1.168), M0 complete | ✅ |
 | 3 | 2026-04-19 | HTTP server + MJPEG test stream, browser verified | ✅ |
+| 4 | 2026-04-19 | OV2640 camera bring-up, I2S DMA capture, JPEG header reconstruction | ✅ |
+| 5 | 2026-04-20 | HTTP architecture rewrite, AEC/AGC tuning, M1 complete | ✅ |

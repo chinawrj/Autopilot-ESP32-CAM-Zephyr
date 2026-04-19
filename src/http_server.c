@@ -2,7 +2,8 @@
  * HTTP Server — Implementation
  *
  * Socket-based HTTP server using Zephyr BSD sockets.
- * Architecture: 1 listener thread + 1 streaming worker.
+ * Architecture: listener thread accepts connections, serves static
+ * pages inline, hands MJPEG stream to a dedicated worker thread.
  * Max 1 concurrent MJPEG stream client.
  */
 
@@ -25,10 +26,24 @@ LOG_MODULE_REGISTER(http_srv, LOG_LEVEL_INF);
 #define MJPEG_FRAME_DELAY_MS 50    /* Minimal delay; capture itself takes time */
 #define MJPEG_BOUNDARY       "frame"
 
-#define HTTP_THREAD_STACK_SIZE 4096
-#define HTTP_THREAD_PRIORITY   7
+#define HTTP_THREAD_STACK_SIZE  2048
+#define STREAM_THREAD_STACK_SIZE 3072
+#define HTTP_THREAD_PRIORITY    7
+#define STREAM_THREAD_PRIORITY  8   /* Lower priority than listener */
 
 static int server_port;
+
+/* Stream worker: socket fd passed via semaphore + atomic */
+static struct k_sem stream_sem;
+static volatile int stream_client_fd = -1;
+
+static const char http_503[] =
+	"HTTP/1.1 503 Service Unavailable\r\n"
+	"Content-Type: text/plain\r\n"
+	"Connection: close\r\n"
+	"Content-Length: 24\r\n"
+	"\r\n"
+	"Stream already in use.\r\n";
 
 /* Index HTML page — embedded in firmware */
 static const char index_html[] =
@@ -144,6 +159,8 @@ static int handle_mjpeg_stream(int client)
 	const uint8_t *frame_data;
 	size_t frame_size;
 	int ret;
+	uint32_t frame_count = 0;
+	int64_t stream_start = k_uptime_get();
 
 	/* Send MJPEG response header */
 	ret = sendall(client, http_mjpeg_hdr, sizeof(http_mjpeg_hdr) - 1);
@@ -155,11 +172,15 @@ static int handle_mjpeg_stream(int client)
 
 	/* Stream frames until client disconnects */
 	while (1) {
+		int64_t cap_start = k_uptime_get();
+
 		ret = frame_source_get(&frame_data, &frame_size);
 		if (ret) {
 			LOG_ERR("Failed to get frame: %d", ret);
 			break;
 		}
+
+		int64_t cap_ms = k_uptime_get() - cap_start;
 
 		/* MJPEG part header */
 		int hdr_len = snprintf(part_hdr, sizeof(part_hdr),
@@ -167,6 +188,8 @@ static int handle_mjpeg_stream(int client)
 			"Content-Type: image/jpeg\r\n"
 			"Content-Length: %zu\r\n"
 			"\r\n", frame_size);
+
+		int64_t send_start = k_uptime_get();
 
 		ret = sendall(client, part_hdr, hdr_len);
 		if (ret) {
@@ -183,11 +206,55 @@ static int handle_mjpeg_stream(int client)
 			break;
 		}
 
+		int64_t send_ms = k_uptime_get() - send_start;
+
+		frame_count++;
+		if (frame_count <= 3 || (frame_count % 20) == 0) {
+			int64_t elapsed = k_uptime_get() - stream_start;
+			int fps10 = elapsed > 0
+				? (int)(frame_count * 10000 / elapsed)
+				: 0;
+			LOG_INF("Frame %u: %zu B, cap=%lld ms, "
+				"send=%lld ms, avg %d.%d fps",
+				frame_count, frame_size,
+				cap_ms, send_ms,
+				fps10 / 10, fps10 % 10);
+		}
+
 		k_msleep(MJPEG_FRAME_DELAY_MS);
 	}
 
-	LOG_INF("MJPEG stream ended");
+	int64_t elapsed = k_uptime_get() - stream_start;
+
+	LOG_INF("MJPEG stream ended: %u frames in %lld ms",
+		frame_count, elapsed);
 	return 0;
+}
+
+/*
+ * Stream worker thread — waits for stream_sem, runs MJPEG stream,
+ * then closes the socket and goes back to waiting.
+ */
+static void stream_thread_fn(void *p1, void *p2, void *p3)
+{
+	ARG_UNUSED(p1);
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	while (1) {
+		k_sem_take(&stream_sem, K_FOREVER);
+
+		int fd = stream_client_fd;
+
+		if (fd < 0) {
+			continue;
+		}
+
+		handle_mjpeg_stream(fd);
+
+		zsock_close(fd);
+		stream_client_fd = -1;
+	}
 }
 
 static void handle_client(int client, struct sockaddr_in *addr)
@@ -206,13 +273,15 @@ static void handle_client(int client, struct sockaddr_in *addr)
 	/* Receive HTTP request */
 	len = zsock_recv(client, recv_buf, sizeof(recv_buf) - 1, 0);
 	if (len <= 0) {
-		goto done;
+		zsock_close(client);
+		return;
 	}
 	recv_buf[len] = '\0';
 
 	if (parse_request(recv_buf, method, sizeof(method),
 			  path, sizeof(path)) < 0) {
-		goto done;
+		zsock_close(client);
+		return;
 	}
 
 	LOG_INF("%s %s from %d.%d.%d.%d",
@@ -222,19 +291,28 @@ static void handle_client(int client, struct sockaddr_in *addr)
 
 	if (strcmp(method, "GET") != 0) {
 		sendall(client, http_404, sizeof(http_404) - 1);
-		goto done;
+		zsock_close(client);
+		return;
 	}
 
 	if (strcmp(path, "/") == 0) {
 		handle_index(client);
+		zsock_close(client);
 	} else if (strcmp(path, "/stream/tcp") == 0) {
-		handle_mjpeg_stream(client);
+		/* Hand off to stream worker (only 1 active stream) */
+		if (stream_client_fd >= 0) {
+			LOG_WRN("Stream busy, rejecting");
+			sendall(client, http_503, sizeof(http_503) - 1);
+			zsock_close(client);
+		} else {
+			stream_client_fd = client;
+			k_sem_give(&stream_sem);
+			/* Socket will be closed by stream thread */
+		}
 	} else {
 		sendall(client, http_404, sizeof(http_404) - 1);
+		zsock_close(client);
 	}
-
-done:
-	zsock_close(client);
 }
 
 /* HTTP listener thread */
@@ -278,6 +356,7 @@ static void http_thread_fn(void *p1, void *p2, void *p3)
 	LOG_INF("HTTP server listening on port %d", server_port);
 
 	while (1) {
+		client_addr_len = sizeof(client_addr);
 		client = zsock_accept(sock, (struct sockaddr *)&client_addr,
 				      &client_addr_len);
 		if (client < 0) {
@@ -291,11 +370,21 @@ static void http_thread_fn(void *p1, void *p2, void *p3)
 }
 
 K_THREAD_STACK_DEFINE(http_stack, HTTP_THREAD_STACK_SIZE);
+K_THREAD_STACK_DEFINE(stream_stack, STREAM_THREAD_STACK_SIZE);
 static struct k_thread http_thread_data;
+static struct k_thread stream_thread_data;
 
 int http_server_start(int port)
 {
 	server_port = port;
+
+	k_sem_init(&stream_sem, 0, 1);
+
+	k_thread_create(&stream_thread_data, stream_stack,
+			K_THREAD_STACK_SIZEOF(stream_stack),
+			stream_thread_fn, NULL, NULL, NULL,
+			STREAM_THREAD_PRIORITY, 0, K_NO_WAIT);
+	k_thread_name_set(&stream_thread_data, "mjpeg_strm");
 
 	k_thread_create(&http_thread_data, http_stack,
 			K_THREAD_STACK_SIZEOF(http_stack),
