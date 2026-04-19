@@ -6,4 +6,6 @@ project(espcam)
 target_sources(app PRIVATE
     src/main.c
     src/wifi_manager.c
+    src/frame_source.c
+    src/http_server.c
 )

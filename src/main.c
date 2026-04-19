@@ -12,10 +12,13 @@
 #include <zephyr/logging/log.h>
 
 #include "wifi_manager.h"
+#include "frame_source.h"
+#include "http_server.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
 #define LED0_NODE DT_ALIAS(led0)
+#define HTTP_PORT 80
 
 #if !DT_NODE_HAS_STATUS_OKAY(LED0_NODE)
 #error "LED0 alias not defined in devicetree overlay"
@@ -67,9 +70,26 @@ int main(void)
 	ret = wifi_manager_init();
 	if (ret == 0) {
 		LOG_INF("WiFi ready — IP: %s", wifi_manager_get_ip());
-		led_set(true);  /* Solid on = connected */
+		led_set(true);
 	} else {
 		LOG_WRN("WiFi init returned %d, running in degraded mode", ret);
+	}
+
+	/* Initialize frame source (test pattern for now) */
+	ret = frame_source_init();
+	if (ret < 0) {
+		LOG_ERR("Frame source init failed: %d", ret);
+	}
+
+	/* Start HTTP server */
+	if (wifi_manager_is_connected()) {
+		ret = http_server_start(HTTP_PORT);
+		if (ret < 0) {
+			LOG_ERR("HTTP server start failed: %d", ret);
+		} else {
+			LOG_INF("HTTP server started on http://%s:%d/",
+				wifi_manager_get_ip(), HTTP_PORT);
+		}
 	}
 
 	/* Main loop: heartbeat + status monitoring */
@@ -78,7 +98,6 @@ int main(void)
 			led_set(true);
 			k_msleep(5000);
 		} else {
-			/* Slow blink = not connected */
 			led_set(true);
 			k_msleep(500);
 			led_set(false);
