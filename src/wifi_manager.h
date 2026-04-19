@@ -32,4 +32,14 @@ bool wifi_manager_is_connected(void);
  */
 const char *wifi_manager_get_ip(void);
 
+/**
+ * Get WiFi link status (RSSI and channel).
+ * Only valid when connected; returns -ENOTCONN otherwise.
+ *
+ * @param rssi Output: signal strength in dBm (negative value)
+ * @param channel Output: WiFi channel number
+ * @return 0 on success, negative errno on failure
+ */
+int wifi_manager_get_link_info(int *rssi, unsigned int *channel);
+
 #endif /* WIFI_MANAGER_H */

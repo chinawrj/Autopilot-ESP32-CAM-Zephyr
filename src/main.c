@@ -9,6 +9,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/drivers/watchdog.h>
 
 #include "wifi_manager.h"
 #include "frame_source.h"
@@ -20,6 +21,7 @@
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
 #define HTTP_PORT 80
+#define WDT_TIMEOUT_MS 30000
 
 int main(void)
 {
@@ -82,16 +84,53 @@ int main(void)
 		}
 	}
 
-	/* Main loop: heartbeat + status monitoring */
+	/* Start hardware watchdog AFTER all init completes */
+	const struct device *wdt = DEVICE_DT_GET(DT_ALIAS(watchdog0));
+	int wdt_channel_id = -1;
+
+	if (device_is_ready(wdt)) {
+		struct wdt_timeout_cfg wdt_config = {
+			.window.max = WDT_TIMEOUT_MS,
+			.callback = NULL,  /* System reset on timeout */
+			.flags = WDT_FLAG_RESET_SOC,
+		};
+
+		wdt_channel_id = wdt_install_timeout(wdt, &wdt_config);
+		if (wdt_channel_id >= 0) {
+			ret = wdt_setup(wdt, WDT_OPT_PAUSE_HALTED_BY_DBG);
+			if (ret == 0) {
+				LOG_INF("Watchdog started (timeout %d ms)",
+					WDT_TIMEOUT_MS);
+			} else {
+				LOG_WRN("Watchdog setup failed: %d", ret);
+				wdt_channel_id = -1;
+			}
+		} else {
+			LOG_WRN("Watchdog install failed: %d", wdt_channel_id);
+		}
+	} else {
+		LOG_WRN("Watchdog device not ready");
+	}
+
+	/* Main loop: heartbeat + watchdog feed + status monitoring */
 	uint32_t loop_cnt = 0;
 	while (1) {
 		led_control_heartbeat(wifi_manager_is_connected());
 
+		if (wdt_channel_id >= 0) {
+			wdt_feed(wdt, wdt_channel_id);
+		}
+
 		/* Periodic status log every ~30s */
 		if (++loop_cnt % 6 == 0) {
-			LOG_INF("Heartbeat: uptime=%us WiFi=%s",
+			int rssi = 0;
+			unsigned int channel = 0;
+
+			wifi_manager_get_link_info(&rssi, &channel);
+			LOG_INF("Heartbeat: uptime=%us WiFi=%s rssi=%d ch=%u",
 				(uint32_t)(k_uptime_get() / 1000),
-				wifi_manager_is_connected() ? "up" : "DOWN");
+				wifi_manager_is_connected() ? "up" : "DOWN",
+				rssi, channel);
 		}
 
 		k_msleep(wifi_manager_is_connected() ? 5000 : 1000);

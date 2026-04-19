@@ -10,6 +10,7 @@
 #include "http_server.h"
 #include "frame_source.h"
 #include "led_control.h"
+#include "wifi_manager.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -20,6 +21,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/random/random.h>
 #include <zephyr/sys/base64.h>
+#include <zephyr/sys/sys_heap.h>
+#include <zephyr/sys/mem_stats.h>
 
 LOG_MODULE_REGISTER(http_srv, LOG_LEVEL_INF);
 
@@ -84,6 +87,8 @@ static const char index_html[] =
 	"<span id=\"temp\">Temp: --</span>"
 	"<span id=\"up\">Up: --</span>"
 	"<span id=\"led\">LED: --</span>"
+	"<span id=\"rssi\">WiFi: --</span>"
+	"<span id=\"mem\">Heap: --</span>"
 	"</div>"
 	"<img src=\"\" id=\"cam\" alt=\"MJPEG Stream\">"
 	"<br>"
@@ -99,6 +104,8 @@ static const char index_html[] =
 	"var s=d.uptime,m=Math.floor(s/60),h=Math.floor(m/60);"
 	"document.getElementById('up').textContent='Up: '+h+'h'+m%60+'m';"
 	"document.getElementById('led').textContent='LED: '+d.led;"
+	"document.getElementById('rssi').textContent='WiFi: '+d.rssi+'dBm ch'+d.channel;"
+	"document.getElementById('mem').textContent='Heap: '+(d.heap_free/1024|0)+'KB free';"
 	"}).catch(()=>{})};"
 	"function ledCtrl(a){"
 	"fetch('/api/led/'+a).then(r=>r.json()).then(d=>{"
@@ -476,14 +483,34 @@ static int handle_api_status(int client, char *buf, size_t buf_size)
 	const char *led_str = led_control_get_state() ? "on" : "off";
 	const char *led_mode = led_control_is_manual() ? "manual" : "auto";
 
+	/* System heap stats */
+	extern struct k_heap _system_heap;
+	struct sys_memory_stats heap_stats;
+	uint32_t heap_free = 0, heap_used = 0;
+
+	if (sys_heap_runtime_stats_get(&_system_heap.heap, &heap_stats) == 0) {
+		heap_free = (uint32_t)heap_stats.free_bytes;
+		heap_used = (uint32_t)heap_stats.allocated_bytes;
+	}
+
+	/* WiFi link info */
+	int rssi = 0;
+	unsigned int channel = 0;
+
+	wifi_manager_get_link_info(&rssi, &channel);
+
 	int json_len = snprintf(buf, buf_size,
 		"{\"fps\":%u,\"uptime\":%u,\"temp\":%d,"
 		"\"led\":\"%s\",\"led_mode\":\"%s\","
-		"\"stream\":%s,\"frames\":%u}",
+		"\"stream\":%s,\"frames\":%u,"
+		"\"heap_free\":%u,\"heap_used\":%u,"
+		"\"rssi\":%d,\"channel\":%u}",
 		stream_fps10, uptime_s, temp10,
 		led_str, led_mode,
 		active ? "true" : "false",
-		stream_frame_cnt);
+		stream_frame_cnt,
+		heap_free, heap_used,
+		rssi, channel);
 
 	/* Build HTTP header in a small temp area after the JSON */
 	char hdr[128];

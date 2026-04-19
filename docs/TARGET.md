@@ -94,13 +94,15 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 
 ---
 
-### M5: Stability & Optimization ⬜ Not Started
-> **Target**: Day 12-14
+### M5: Stability & Optimization 🔄 In Progress
+> **Started**: Day 9
 
-- [ ] Memory leak detection (Zephyr heap monitoring)
+- [x] Watchdog timer configuration (30s HW WDT, feeds from heartbeat loop)
+- [x] Memory monitoring (system heap stats in `/api/status` + HUD)
+- [x] WiFi RSSI tracking (signal strength in `/api/status` + HUD + heartbeat log)
+- [ ] Memory leak detection (long-running heap tracking)
 - [ ] WiFi reconnection stress testing
 - [ ] PSRAM optimization (frame buffer allocation strategy)
-- [ ] Watchdog timer configuration
 - [ ] 24-hour continuous operation test
 - [ ] Code refactoring and documentation
 
@@ -120,3 +122,4 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 | 6 | 2026-04-20 | HUD overlay, status API, LED control, capture yield fix, M2 complete | ✅ |
 | 7 | 2026-04-20 | TCP accept bug diagnosis, two-port fix (HTTP:80/Stream:81), M3 complete | ✅ |
 | 8 | 2026-04-20 | WebSocket GUID fix, browser+Python WS streaming verified, M4 complete | ✅ |
+| 9 | 2026-04-20 | Watchdog timer, heap monitoring, WiFi RSSI in status API + HUD, M5 started | ✅ |

@@ -161,3 +161,37 @@ const char *wifi_manager_get_ip(void)
 {
 	return ip_addr_str;
 }
+
+int wifi_manager_get_link_info(int *rssi, unsigned int *channel)
+{
+	if (!connected) {
+		return -ENOTCONN;
+	}
+
+	struct net_if *iface = net_if_get_default();
+
+	if (!iface) {
+		return -ENODEV;
+	}
+
+	struct wifi_iface_status status = {0};
+	int ret = net_mgmt(NET_REQUEST_WIFI_IFACE_STATUS, iface,
+			   &status, sizeof(status));
+
+	if (ret) {
+		return ret;
+	}
+
+	if (status.state < WIFI_STATE_ASSOCIATED) {
+		return -ENOTCONN;
+	}
+
+	if (rssi) {
+		*rssi = status.rssi;
+	}
+	if (channel) {
+		*channel = status.channel;
+	}
+
+	return 0;
+}
