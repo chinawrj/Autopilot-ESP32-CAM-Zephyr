@@ -1,0 +1,21 @@
+/*
+ * DTS overlay for YD-ESP32-CAM (VCC-GND Studio)
+ * Base board: esp32_devkitc_wrover
+ * Module: ESP32-WROVER-E-N8R8 (8MB Flash, 8MB PSRAM)
+ *
+ * Adds: onboard LED on GPIO33
+ */
+
+/ {
+	leds {
+		compatible = "gpio-leds";
+		led0: led_0 {
+			gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>;
+			label = "Onboard LED";
+		};
+	};
+
+	aliases {
+		led0 = &led0;
+	};
+};

@@ -22,6 +22,7 @@ The AI Agent acts as a senior embedded engineer, iterating daily to autonomously
 - **Compilation passing ≠ done** — Must observe expected behavior in serial logs
 - **Browser must use visible mode (headless=False)** — No headless mode; use `~/.patchright-userdata` persistence directory
 - **No restrictions on available tools** — Use every available tool
+- **Python must use project-local `.venv/`** — `source .venv/bin/activate` before any `pip install` or `python3` usage. Never use system Python or external venvs.
 
 ### 1. WiFi Credential Security
 

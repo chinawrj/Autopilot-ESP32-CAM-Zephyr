@@ -108,6 +108,27 @@ Startup code logic:
 - [ ] 24-hour continuous operation test
 - [ ] Code refactoring and documentation
 
+## Python Environment (Mandatory)
+
+All Python operations **must** use the project-local `.venv/` virtual environment.
+
+```bash
+# First-time setup (run once at project start)
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt  # if exists
+
+# Activate before each dev session
+source .venv/bin/activate
+```
+
+**Rules:**
+- ⛔ **Never** use system Python or `--break-system-packages` to install packages
+- ⛔ **Never** use a venv outside the project directory (e.g. `~/patchright-env/`)
+- ✅ All `pip install` must run inside activated `.venv/`
+- ✅ `.venv/` is in `.gitignore` — never committed
+- ✅ All Python dependencies go into `requirements.txt`
+
 ## Daily Workflow
 
 ### Starting a New Day

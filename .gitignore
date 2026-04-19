@@ -2,6 +2,11 @@
 build/
 twister-out/
 
+# Zephyr workspace (T2 topology — modules cloned at repo root)
+zephyr/
+modules/
+bootloader/
+
 # Zephyr config
 *.config
 *.old
