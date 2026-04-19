@@ -77,14 +77,23 @@ int main(void)
 		if (ret < 0) {
 			LOG_ERR("HTTP server start failed: %d", ret);
 		} else {
-			LOG_INF("HTTP server started on http://%s:%d/",
-				wifi_manager_get_ip(), HTTP_PORT);
+			LOG_INF("HTTP server started on http://%s:%d/ (stream port %d)",
+				wifi_manager_get_ip(), HTTP_PORT, HTTP_PORT + 1);
 		}
 	}
 
 	/* Main loop: heartbeat + status monitoring */
+	uint32_t loop_cnt = 0;
 	while (1) {
 		led_control_heartbeat(wifi_manager_is_connected());
+
+		/* Periodic status log every ~30s */
+		if (++loop_cnt % 6 == 0) {
+			LOG_INF("Heartbeat: uptime=%us WiFi=%s",
+				(uint32_t)(k_uptime_get() / 1000),
+				wifi_manager_is_connected() ? "up" : "DOWN");
+		}
+
 		k_msleep(wifi_manager_is_connected() ? 5000 : 1000);
 	}
 

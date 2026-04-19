@@ -13,6 +13,7 @@
 #include <zephyr/net/net_mgmt.h>
 #include <zephyr/net/wifi_mgmt.h>
 #include <zephyr/logging/log.h>
+#include <esp_wifi.h>
 
 LOG_MODULE_REGISTER(wifi_mgr, LOG_LEVEL_INF);
 
@@ -138,6 +139,14 @@ int wifi_manager_init(void)
 		LOG_WRN("WiFi connection timeout (%ds), continuing...",
 			CONFIG_APP_WIFI_CONNECT_TIMEOUT_S);
 		return -ETIMEDOUT;
+	}
+
+	/* Disable WiFi power save for reliable streaming */
+	esp_err_t ps_ret = esp_wifi_set_ps(WIFI_PS_NONE);
+	if (ps_ret != ESP_OK) {
+		LOG_WRN("Failed to disable WiFi PS: 0x%x (non-fatal)", ps_ret);
+	} else {
+		LOG_INF("WiFi power save disabled (ESP-IDF)");
 	}
 
 	return 0;

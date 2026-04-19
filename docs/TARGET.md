@@ -66,6 +66,20 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 
 ---
 
+### M3: Stream Stability ✅ Complete
+> **Completed**: Day 7
+
+- [x] Diagnosed TCP accept corruption bug (Zephyr v4.1.0 ESP32 TCP state machine)
+- [x] Two-port architecture fix (HTTP:80, Stream:81 on separate listen sockets)
+- [x] poll()-based multiplexing of both listen sockets in single thread
+- [x] Comprehensive interleaved HTTP→Stream testing (8/8 pass)
+- [x] ZVFS_OPEN_MAX raised to 16 (default 4 was too low for server)
+- [x] TCP retry count tuned (5→2) for faster connection cleanup
+
+**Completion criteria**: HTTP pages and MJPEG stream work reliably in any interleaved order. ✅ Verified
+
+---
+
 ### M4: WebSocket Video Stream ⬜ Not Started
 > **Target**: Day 9-11
 
@@ -102,3 +116,4 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 | 4 | 2026-04-19 | OV2640 camera bring-up, I2S DMA capture, JPEG header reconstruction | ✅ |
 | 5 | 2026-04-20 | HTTP architecture rewrite, AEC/AGC tuning, M1 complete | ✅ |
 | 6 | 2026-04-20 | HUD overlay, status API, LED control, capture yield fix, M2 complete | ✅ |
+| 7 | 2026-04-20 | TCP accept bug diagnosis, two-port fix (HTTP:80/Stream:81), M3 complete | ✅ |
