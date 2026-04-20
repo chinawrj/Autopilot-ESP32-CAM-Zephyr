@@ -151,10 +151,12 @@ static const char ws_page_html[] =
 	"fetch('/api/led/'+a).then(r=>r.json()).then(d=>{"
 	"document.getElementById('led').textContent='LED: '+d.led;"
 	"}).catch(()=>{})};"
-	/* Resolution switching */
+	/* Resolution switching — close WS and let auto-reconnect handle it */
 	"function setRes(r){"
 	"fetch('/api/resolution/'+r).then(r=>r.json()).then(d=>{"
 	"document.getElementById('res_hud').textContent='Res: '+d.resolution;"
+	"fc=0;t0=Date.now();"
+	"if(ws){ws.close()}"
 	"}).catch(()=>{})};"
 	/* Snapshot */
 	"function snap(){"

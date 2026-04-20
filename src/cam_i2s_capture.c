@@ -14,8 +14,8 @@
 
 LOG_MODULE_REGISTER(cam_i2s, LOG_LEVEL_INF);
 
-#define WARMUP_FRAMES      30
-#define STREAM_SKIP_FRAMES 2
+#define WARMUP_FRAMES      10
+#define STREAM_SKIP_FRAMES 0
 #define CAPTURE_TIMEOUT_MS 5000
 
 static bool warmed_up;
