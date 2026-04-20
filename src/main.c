@@ -22,12 +22,13 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
 #define HTTP_PORT 80
 #define WDT_TIMEOUT_MS 30000
+#define APP_VERSION "1.0.0"
 
 int main(void)
 {
 	int ret;
 
-	LOG_INF("Autopilot ESP32-CAM starting...");
+	LOG_INF("Autopilot ESP32-CAM v%s starting...", APP_VERSION);
 	LOG_INF("Board: YD-ESP32-CAM (ESP32-WROVER-E-N8R8)");
 
 	ret = led_control_init();

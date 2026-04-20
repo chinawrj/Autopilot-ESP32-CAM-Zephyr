@@ -160,7 +160,7 @@ static int handle_api_status(int client, char *buf, size_t buf_size)
 	wifi_manager_get_stats(&wifi_dc, &wifi_rc);
 
 	int json_len = snprintf(buf, buf_size,
-		"{\"fps\":%u,\"uptime\":%u,\"temp\":%d,"
+		"{\"version\":\"1.0.0\",\"fps\":%u,\"uptime\":%u,\"temp\":%d,"
 		"\"led\":\"%s\",\"led_mode\":\"%s\","
 		"\"stream\":%s,\"frames\":%u,"
 		"\"resolution\":\"%s\","
