@@ -673,7 +673,7 @@ static int __attribute__((noinline)) handle_snapshot(int client)
 {
 	const uint8_t *frame_data;
 	size_t frame_size;
-	char hdr[160];
+	char hdr[256];
 	int ret;
 	int64_t t0 = k_uptime_get();
 
