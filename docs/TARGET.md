@@ -126,3 +126,5 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 | 10 | 2026-04-20 | HTML template extraction, memory leak soak test (PASS, zero drift) | ✅ |
 | 11 | 2026-04-20 | WiFi resilience fix, disconnect tracking, M5 complete | ✅ |
 | 12 | 2026-04-20 | Snapshot endpoint /snapshot.jpg + UI button, on-device verified | ✅ |
+| 13 | 2026-04-20 | Code refactoring: http_server split, stream_handler module, code health | ✅ |
+| 14 | 2026-04-20 | Max resolution upgrade: QVGA→UXGA runtime switching, all 6 resolutions verified | ✅ |

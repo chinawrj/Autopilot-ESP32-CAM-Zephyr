@@ -37,6 +37,12 @@ size_t jpeg_saved_header_len(void)
 	return saved_header_len;
 }
 
+void jpeg_reset_header(void)
+{
+	saved_header_len = 0;
+	LOG_INF("JPEG header cache cleared");
+}
+
 /*
  * Extract the full JPEG header from continuous capture data.
  * Scans for DQT marker (start of header) then walks markers through

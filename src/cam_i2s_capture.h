@@ -27,4 +27,10 @@ int cam_i2s_init(void);
  */
 int cam_i2s_capture_frame(const uint8_t **buf, size_t *size);
 
+/**
+ * Reset warmup state (call after resolution/quality change).
+ * Forces re-extraction of JPEG header on next capture.
+ */
+void cam_i2s_reset_warmup(void);
+
 #endif /* CAM_I2S_CAPTURE_H */

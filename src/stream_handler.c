@@ -104,6 +104,28 @@ bool stream_is_busy(void)
 	return stream_client_fd >= 0;
 }
 
+void stream_force_stop(void)
+{
+	int fd = stream_client_fd;
+
+	if (fd < 0) {
+		return;
+	}
+
+	LOG_INF("Force-stopping stream fd=%d", fd);
+	zsock_close(fd);
+
+	/* Wait for stream thread to finish cleanup */
+	for (int i = 0; i < 50; i++) {
+		k_msleep(100);
+		if (stream_client_fd < 0) {
+			LOG_INF("Stream stopped");
+			return;
+		}
+	}
+	LOG_WRN("Stream stop timeout");
+}
+
 uint32_t stream_get_fps10(void)
 {
 	return stream_fps10;

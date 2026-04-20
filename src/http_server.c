@@ -12,6 +12,8 @@
 #include "led_control.h"
 #include "wifi_manager.h"
 #include "html_pages.h"
+#include "camera_init.h"
+#include "cam_i2s_capture.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -161,6 +163,7 @@ static int handle_api_status(int client, char *buf, size_t buf_size)
 		"{\"fps\":%u,\"uptime\":%u,\"temp\":%d,"
 		"\"led\":\"%s\",\"led_mode\":\"%s\","
 		"\"stream\":%s,\"frames\":%u,"
+		"\"resolution\":\"%s\","
 		"\"heap_free\":%u,\"heap_used\":%u,"
 		"\"rssi\":%d,\"channel\":%u,"
 		"\"wifi_disconnects\":%u,\"wifi_reconnects\":%u}",
@@ -168,6 +171,7 @@ static int handle_api_status(int client, char *buf, size_t buf_size)
 		led_str, led_mode,
 		active ? "true" : "false",
 		stream_get_frame_cnt(),
+		camera_resolution_name(camera_get_resolution()),
 		heap_free, heap_used,
 		rssi, channel,
 		wifi_dc, wifi_rc);
@@ -256,6 +260,86 @@ static int handle_ws_page(int client)
 	}
 
 	return http_sendall(client, ws_page_html, sizeof(ws_page_html) - 1);
+}
+
+static int handle_api_resolution(int client, const char *action,
+				 char *buf, size_t buf_size)
+{
+	if (strcmp(action, "get") == 0) {
+		enum camera_resolution res = camera_get_resolution();
+		int w, h;
+
+		camera_resolution_size(res, &w, &h);
+		int json_len = snprintf(buf, buf_size,
+			"{\"resolution\":\"%s\",\"width\":%d,\"height\":%d}",
+			camera_resolution_name(res), w, h);
+
+		char hdr[128];
+		int hdr_len = snprintf(hdr, sizeof(hdr), "%s%d\r\n\r\n",
+				       http_200_json_hdr, json_len);
+		int ret = http_sendall(client, hdr, hdr_len);
+
+		if (ret) { return ret; }
+		return http_sendall(client, buf, json_len);
+	}
+
+	/* Parse resolution name from action */
+	enum camera_resolution target;
+
+	if (strcmp(action, "qvga") == 0) {
+		target = CAM_RES_QVGA;
+	} else if (strcmp(action, "vga") == 0) {
+		target = CAM_RES_VGA;
+	} else if (strcmp(action, "svga") == 0) {
+		target = CAM_RES_SVGA;
+	} else if (strcmp(action, "xga") == 0) {
+		target = CAM_RES_XGA;
+	} else if (strcmp(action, "sxga") == 0) {
+		target = CAM_RES_SXGA;
+	} else if (strcmp(action, "uxga") == 0) {
+		target = CAM_RES_UXGA;
+	} else {
+		http_sendall(client, http_404, sizeof(http_404) - 1);
+		return 0;
+	}
+
+	/* Stop any active stream before changing resolution */
+	if (stream_is_busy()) {
+		LOG_INF("Stopping stream for resolution change");
+		stream_force_stop();
+	}
+
+	/* Reset I2S warmup state (clears JPEG header cache) */
+	cam_i2s_reset_warmup();
+
+	/* Apply new resolution */
+	int ret = camera_set_resolution(target);
+
+	if (ret < 0) {
+		int json_len = snprintf(buf, buf_size,
+			"{\"error\":\"failed\",\"code\":%d}", ret);
+		char hdr[128];
+		int hdr_len = snprintf(hdr, sizeof(hdr), "%s%d\r\n\r\n",
+				       http_200_json_hdr, json_len);
+
+		http_sendall(client, hdr, hdr_len);
+		return http_sendall(client, buf, json_len);
+	}
+
+	int w, h;
+
+	camera_resolution_size(target, &w, &h);
+	int json_len = snprintf(buf, buf_size,
+		"{\"resolution\":\"%s\",\"width\":%d,\"height\":%d}",
+		camera_resolution_name(target), w, h);
+
+	char hdr[128];
+	int hdr_len = snprintf(hdr, sizeof(hdr), "%s%d\r\n\r\n",
+			       http_200_json_hdr, json_len);
+
+	ret = http_sendall(client, hdr, hdr_len);
+	if (ret) { return ret; }
+	return http_sendall(client, buf, json_len);
 }
 
 static void handle_client(int client, struct sockaddr_in *addr)
@@ -360,6 +444,9 @@ static void handle_client(int client, struct sockaddr_in *addr)
 		handle_api_status(client, recv_buf, sizeof(recv_buf));
 	} else if (strncmp(path, "/api/led/", 9) == 0) {
 		handle_api_led(client, path + 9, recv_buf, sizeof(recv_buf));
+	} else if (strncmp(path, "/api/resolution/", 16) == 0) {
+		handle_api_resolution(client, path + 16,
+				      recv_buf, sizeof(recv_buf));
 	} else {
 		http_sendall(client, http_404, sizeof(http_404) - 1);
 	}

@@ -26,6 +26,9 @@ void jpeg_extract_and_save_header(const uint8_t *data, size_t len);
 /** Returns the saved header length (0 if not yet extracted). */
 size_t jpeg_saved_header_len(void);
 
+/** Clear the saved JPEG header cache (call after resolution change). */
+void jpeg_reset_header(void);
+
 /**
  * Fix up a raw frame buffer into a valid JPEG image.
  *

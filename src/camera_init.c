@@ -336,7 +336,106 @@ int camera_init(void)
 	return 0;
 }
 
+static enum camera_resolution current_res = CAM_RES_QVGA;
+
 bool camera_is_detected(void)
 {
 	return cam_detected;
+}
+
+enum camera_resolution camera_get_resolution(void)
+{
+	return current_res;
+}
+
+struct res_info {
+	const char *name;
+	int width;
+	int height;
+	const struct ov2640_reg *regs;
+	uint8_t qs;  /* JPEG quality (lower = better, larger file) */
+};
+
+static const struct res_info res_table[CAM_RES_COUNT] = {
+	[CAM_RES_QVGA] = { "QVGA", 320,  240,  ov2640_qvga_regs, 0x04 },
+	[CAM_RES_VGA]  = { "VGA",  640,  480,  ov2640_vga_regs,  0x06 },
+	[CAM_RES_SVGA] = { "SVGA", 800,  600,  ov2640_svga_regs, 0x08 },
+	[CAM_RES_XGA]  = { "XGA",  1024, 768,  ov2640_xga_regs,  0x0A },
+	[CAM_RES_SXGA] = { "SXGA", 1280, 1024, ov2640_sxga_regs, 0x0C },
+	[CAM_RES_UXGA] = { "UXGA", 1600, 1200, ov2640_uxga_out_regs, 0x0E },
+};
+
+const char *camera_resolution_name(enum camera_resolution res)
+{
+	if (res >= CAM_RES_COUNT) {
+		return "???";
+	}
+	return res_table[res].name;
+}
+
+void camera_resolution_size(enum camera_resolution res,
+			    int *width, int *height)
+{
+	if (res >= CAM_RES_COUNT) {
+		*width = 0;
+		*height = 0;
+		return;
+	}
+	*width = res_table[res].width;
+	*height = res_table[res].height;
+}
+
+int camera_set_resolution(enum camera_resolution res)
+{
+	const struct device *i2c = DEVICE_DT_GET(I2C_NODE);
+	int ret;
+
+	if (res >= CAM_RES_COUNT) {
+		return -EINVAL;
+	}
+	if (!cam_configured) {
+		return -ENODEV;
+	}
+
+	const struct res_info *ri = &res_table[res];
+
+	LOG_INF("Setting resolution to %s (%dx%d, QS=0x%02x)",
+		ri->name, ri->width, ri->height, ri->qs);
+
+	/* Write output window registers */
+	ret = ov2640_write_regs(i2c, ri->regs);
+	if (ret < 0) {
+		LOG_ERR("Resolution regs write failed: %d", ret);
+		return ret;
+	}
+	k_msleep(10);
+
+	/* Re-apply JPEG mode */
+	ret = ov2640_write_regs(i2c, ov2640_jpeg_regs);
+	if (ret < 0) {
+		LOG_ERR("JPEG regs write failed: %d", ret);
+		return ret;
+	}
+	k_msleep(30);
+
+	/* Set per-resolution JPEG quality */
+	ret = ov2640_write_reg(i2c, BANK_SEL, BANK_SEL_DSP);
+	if (ret < 0) { return ret; }
+	ret = ov2640_write_reg(i2c, QS, ri->qs);
+	if (ret < 0) { return ret; }
+
+	/* Set JPEG clock divider based on resolution */
+	ret = ov2640_write_reg(i2c, BANK_SEL, BANK_SEL_SENSOR);
+	if (ret < 0) { return ret; }
+	ret = ov2640_write_reg(i2c, CLKRC, 0x00);
+	if (ret < 0) { return ret; }
+	ret = ov2640_write_reg(i2c, BANK_SEL, BANK_SEL_DSP);
+	if (ret < 0) { return ret; }
+	ret = ov2640_write_reg(i2c, R_DVP_SP,
+			       res >= CAM_RES_XGA ? 0x08 : 0x08);
+	if (ret < 0) { return ret; }
+
+	current_res = res;
+	LOG_INF("Resolution set to %s", ri->name);
+	return 0;
 }

@@ -62,8 +62,8 @@ static const uint8_t cam_data_pins[8] = {
 #define DMA_BUF_COUNT    4
 #define DMA_TOTAL_SIZE   (DMA_BUF_SIZE * DMA_BUF_COUNT)
 
-/* Max JPEG frame size after byte extraction (QVGA ~5-15KB typical) */
-#define FRAME_BUF_SIZE   (64 * 1024)
+/* Max JPEG frame size after byte extraction (UXGA can reach 200KB+) */
+#define FRAME_BUF_SIZE   (384 * 1024)
 
 /* I2S0 peripheral */
 #define I2S_HW           I2S0
@@ -448,11 +448,13 @@ static void cam_i2s_dma_start(void)
 	I2S_HW.conf.rx_start = 1;
 }
 
+/* Warmup state — file-scope so cam_i2s_reset_warmup() can clear it */
+static bool warmed_up;
+
 int cam_i2s_capture_frame(const uint8_t **buf, size_t *size)
 {
 	#define WARMUP_FRAMES 30
 	#define STREAM_SKIP_FRAMES 2
-	static bool warmed_up;
 
 	/* One-time DQT extraction: run DMA continuously for a few frames
 	 * to capture the JPEG header tables.  This is a separate pass
@@ -625,4 +627,18 @@ int cam_i2s_capture_frame(const uint8_t **buf, size_t *size)
 
 	return jpeg_fixup_frame(frame_buf, frame_pos, FRAME_BUF_SIZE,
 				buf, size);
+}
+
+void cam_i2s_reset_warmup(void)
+{
+	/* Stop any ongoing capture */
+	I2S_HW.conf.rx_start = 0;
+	I2S_HW.in_link.stop = 1;
+	capturing = false;
+	extract_active = false;
+
+	/* Reset warmup state so next capture re-extracts JPEG header */
+	warmed_up = false;
+	jpeg_reset_header();
+	LOG_INF("I2S warmup state reset");
 }

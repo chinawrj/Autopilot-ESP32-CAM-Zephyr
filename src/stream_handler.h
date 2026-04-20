@@ -37,6 +37,13 @@ int stream_try_start(int fd, enum stream_mode mode, const char *ws_key);
 /** Returns true if a stream client is currently active. */
 bool stream_is_busy(void);
 
+/**
+ * Force-stop any active stream. Closes the stream fd to break the
+ * stream loop, then waits for the stream thread to become idle.
+ * Used before resolution changes. No-op if no stream is active.
+ */
+void stream_force_stop(void);
+
 /** Returns FPS × 10 (e.g. 195 = 19.5 fps). */
 uint32_t stream_get_fps10(void);
 

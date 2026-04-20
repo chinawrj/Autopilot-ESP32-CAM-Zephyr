@@ -347,12 +347,59 @@ static const struct ov2640_reg ov2640_uxga_regs[] = {
 	{ 0x00,     0x00 },
 };
 
-/* QVGA (320x240) output window size */
+/* Resolution output window tables (ZMOW/ZMOH/ZMHH) */
+
+/* QVGA (320x240) */
 static const struct ov2640_reg ov2640_qvga_regs[] = {
 	{ BANK_SEL, BANK_SEL_DSP },
 	{ ZMOW,     (320 >> 2) & 0xFF },
 	{ ZMOH,     (240 >> 2) & 0xFF },
 	{ ZMHH,     ((320 >> 8) & 0x04) | ((240 >> 8) & 0x03) },
+	{ 0x00,     0x00 },
+};
+
+/* VGA (640x480) */
+static const struct ov2640_reg ov2640_vga_regs[] = {
+	{ BANK_SEL, BANK_SEL_DSP },
+	{ ZMOW,     (640 >> 2) & 0xFF },
+	{ ZMOH,     (480 >> 2) & 0xFF },
+	{ ZMHH,     ((640 >> 8) & 0x04) | ((480 >> 8) & 0x03) },
+	{ 0x00,     0x00 },
+};
+
+/* SVGA (800x600) */
+static const struct ov2640_reg ov2640_svga_regs[] = {
+	{ BANK_SEL, BANK_SEL_DSP },
+	{ ZMOW,     (800 >> 2) & 0xFF },
+	{ ZMOH,     (600 >> 2) & 0xFF },
+	{ ZMHH,     ((800 >> 8) & 0x04) | ((600 >> 8) & 0x03) },
+	{ 0x00,     0x00 },
+};
+
+/* XGA (1024x768) */
+static const struct ov2640_reg ov2640_xga_regs[] = {
+	{ BANK_SEL, BANK_SEL_DSP },
+	{ ZMOW,     (1024 >> 2) & 0xFF },
+	{ ZMOH,     (768 >> 2) & 0xFF },
+	{ ZMHH,     ((1024 >> 8) & 0x04) | ((768 >> 8) & 0x03) },
+	{ 0x00,     0x00 },
+};
+
+/* SXGA (1280x1024) */
+static const struct ov2640_reg ov2640_sxga_regs[] = {
+	{ BANK_SEL, BANK_SEL_DSP },
+	{ ZMOW,     (1280 >> 2) & 0xFF },
+	{ ZMOH,     (1024 >> 2) & 0xFF },
+	{ ZMHH,     ((1280 >> 8) & 0x04) | ((1024 >> 8) & 0x03) },
+	{ 0x00,     0x00 },
+};
+
+/* UXGA (1600x1200) */
+static const struct ov2640_reg ov2640_uxga_out_regs[] = {
+	{ BANK_SEL, BANK_SEL_DSP },
+	{ ZMOW,     (1600 >> 2) & 0xFF },
+	{ ZMOH,     (1200 >> 2) & 0xFF },
+	{ ZMHH,     ((1600 >> 8) & 0x04) | ((1200 >> 8) & 0x03) },
 	{ 0x00,     0x00 },
 };
 
