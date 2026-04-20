@@ -8,7 +8,10 @@ target_sources(app PRIVATE
     src/wifi_manager.c
     src/frame_source.c
     src/http_server.c
+    src/stream_handler.c
     src/camera_init.c
     src/cam_i2s_capture.c
+    src/cam_jpeg_fixup.c
     src/led_control.c
+    src/ws_protocol.c
 )
