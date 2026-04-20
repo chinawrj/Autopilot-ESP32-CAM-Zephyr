@@ -129,3 +129,4 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 | 13 | 2026-04-20 | Code refactoring: http_server split, stream_handler module, code health | ✅ |
 | 14 | 2026-04-20 | Max resolution upgrade: QVGA→UXGA runtime switching, all 6 resolutions verified | ✅ |
 | 15 | 2026-04-20 | Release polish: stability test, version v1.0.0, README, code health | ✅ |
+| 16 | 2026-04-20 | Release v1.0.0 published on GitHub | ✅ |
