@@ -44,6 +44,7 @@ LOG_MODULE_REGISTER(http_srv, LOG_LEVEL_INF);
 enum stream_mode {
 	STREAM_MJPEG_TCP,
 	STREAM_WS_BINARY,
+	STREAM_SNAPSHOT,
 };
 
 static int server_port;
@@ -665,6 +666,53 @@ static int __attribute__((noinline)) handle_ws_stream(int client)
 	return 0;
 }
 
+/* Single-frame snapshot — captures one JPEG and serves it as image/jpeg.
+ * Runs on the stream thread to share the camera serialization with streams.
+ */
+static int __attribute__((noinline)) handle_snapshot(int client)
+{
+	const uint8_t *frame_data;
+	size_t frame_size;
+	char hdr[160];
+	int ret;
+	int64_t t0 = k_uptime_get();
+
+	struct timeval tv = { .tv_sec = STREAM_SEND_TIMEOUT_S };
+	zsock_setsockopt(client, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+
+	ret = frame_source_get(&frame_data, &frame_size);
+	if (ret || frame_size == 0) {
+		LOG_ERR("Snapshot: capture failed (%d)", ret);
+		sendall(client, http_503, sizeof(http_503) - 1);
+		return ret ? ret : -EIO;
+	}
+
+	int hdr_len = snprintf(hdr, sizeof(hdr),
+		"HTTP/1.1 200 OK\r\n"
+		"Content-Type: image/jpeg\r\n"
+		"Content-Length: %zu\r\n"
+		"Content-Disposition: inline; filename=\"snapshot.jpg\"\r\n"
+		"Cache-Control: no-store\r\n"
+		"Connection: close\r\n\r\n",
+		frame_size);
+
+	ret = sendall(client, hdr, hdr_len);
+	if (ret) {
+		LOG_ERR("Snapshot: hdr send failed (%d)", ret);
+		return ret;
+	}
+
+	ret = sendall(client, frame_data, frame_size);
+	if (ret) {
+		LOG_ERR("Snapshot: body send failed (%d)", ret);
+		return ret;
+	}
+
+	LOG_INF("Snapshot served: %zu bytes in %lld ms",
+		frame_size, k_uptime_get() - t0);
+	return 0;
+}
+
 /*
  * Stream worker thread — waits for stream_sem, runs MJPEG or WS stream,
  * then closes the socket and goes back to waiting.
@@ -697,6 +745,8 @@ static void stream_thread_fn(void *p1, void *p2, void *p3)
 				continue;
 			}
 			handle_ws_stream(fd);
+		} else if (stream_mode == STREAM_SNAPSHOT) {
+			handle_snapshot(fd);
 		} else {
 			handle_mjpeg_stream(fd);
 		}
@@ -935,6 +985,11 @@ static void handle_stream_client(int client, struct sockaddr_in *addr)
 	if (strcmp(path, "/stream/tcp") == 0) {
 		LOG_INF("Stream port: handing off MJPEG fd=%d", client);
 		stream_mode = STREAM_MJPEG_TCP;
+		stream_client_fd = client;
+		k_sem_give(&stream_sem);
+	} else if (strcmp(path, "/snapshot.jpg") == 0) {
+		LOG_INF("Stream port: handing off snapshot fd=%d", client);
+		stream_mode = STREAM_SNAPSHOT;
 		stream_client_fd = client;
 		k_sem_give(&stream_sem);
 	} else if (strcmp(path, "/stream/ws") == 0) {
