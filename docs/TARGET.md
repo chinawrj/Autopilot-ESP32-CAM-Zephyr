@@ -125,3 +125,4 @@ This project uses **Zephyr RTOS** instead of ESP-IDF. Key implications:
 | 9 | 2026-04-20 | Watchdog timer, heap monitoring, WiFi RSSI in status API + HUD, M5 started | ✅ |
 | 10 | 2026-04-20 | HTML template extraction, memory leak soak test (PASS, zero drift) | ✅ |
 | 11 | 2026-04-20 | WiFi resilience fix, disconnect tracking, M5 complete | ✅ |
+| 12 | 2026-04-20 | Snapshot endpoint /snapshot.jpg + UI button, on-device verified | ✅ |
